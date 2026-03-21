@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.4.0";
+        public const string PluginVersion = "1.4.1";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
