@@ -104,3 +104,4 @@ C:\Users\Rik\OneDrive\Valheim Mods\MegaTrainer\obj\Release\net462\MegaTrainer.cs
 C:\Users\Rik\OneDrive\Valheim Mods\MegaTrainer\obj\Release\net462\MegaTrai.05073C8F.Up2Date
 C:\Users\Rik\OneDrive\Valheim Mods\MegaTrainer\obj\Release\net462\MegaTrainer.dll
 C:\Users\Rik\OneDrive\Valheim Mods\MegaTrainer\obj\Release\net462\MegaTrainer.pdb
+c:\Users\Rik\OneDrive\Valheim Mods\MegaTrainer\obj\Release\net462\MegaTrainer.sourcelink.json

@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.4.1";
+        public const string PluginVersion = "1.4.2";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -37,6 +37,12 @@ namespace MegaTrainer
         private static GUIStyle _hudKeyStyle;
         private static GUIStyle _hudOnStyle;
         private static GUIStyle _hudOffStyle;
+        private static Texture2D _bgTex;
+        private static Texture2D _borderTex;
+
+        // Thread-safe flags — set from FileSystemWatcher bg thread, consumed on main thread
+        private static volatile bool _pendingHudShow;
+        private static volatile bool _pendingStateReload;
 
         // Numpad → cheat ID mapping
         private struct NumpadBinding
@@ -176,19 +182,8 @@ namespace MegaTrainer
 
         private void OnStateChanged(object sender, FileSystemEventArgs e)
         {
-            try
-            {
-                System.Threading.Thread.Sleep(100); // Let the file finish writing
-                LoadState();
-                ShowHud();
-
-                if (Player.m_localPlayer != null)
-                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, "MegaTrainer updated!");
-            }
-            catch (Exception ex)
-            {
-                Log.LogError($"Error reloading trainer state: {ex.Message}");
-            }
+            // FileSystemWatcher fires on a background thread — defer Unity work to main thread
+            _pendingStateReload = true;
         }
 
         internal static bool IsCheatEnabled(string id)
@@ -198,6 +193,30 @@ namespace MegaTrainer
 
         private void Update()
         {
+            // Process deferred state reload from FileSystemWatcher (bg thread → main thread)
+            if (_pendingStateReload)
+            {
+                _pendingStateReload = false;
+                try
+                {
+                    LoadState();
+                    ShowHud();
+                    if (Player.m_localPlayer != null)
+                        Player.m_localPlayer.Message(MessageHud.MessageType.Center, "MegaTrainer updated!");
+                }
+                catch (Exception ex)
+                {
+                    Log.LogError($"Error reloading trainer state: {ex.Message}");
+                }
+            }
+
+            // Process deferred HUD show
+            if (_pendingHudShow)
+            {
+                _pendingHudShow = false;
+                ShowHud();
+            }
+
             Player player = Player.m_localPlayer;
             if (player == null) return;
 
@@ -476,19 +495,29 @@ namespace MegaTrainer
             // Background
             Color prevBg = GUI.backgroundColor;
             GUI.backgroundColor = new Color(0f, 0f, 0f, alpha);
-            Texture2D bgTex = new Texture2D(1, 1);
-            bgTex.SetPixel(0, 0, new Color(0.08f, 0.08f, 0.12f, alpha));
-            bgTex.Apply();
-            GUI.DrawTexture(new Rect(x, y, panelW, panelH), bgTex);
+            if (_bgTex == null)
+            {
+                _bgTex = new Texture2D(1, 1);
+                _bgTex.SetPixel(0, 0, new Color(0.08f, 0.08f, 0.12f, 1f));
+                _bgTex.Apply();
+            }
+            var bgColor = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, alpha);
+            GUI.DrawTexture(new Rect(x, y, panelW, panelH), _bgTex);
 
             // Border
-            Texture2D borderTex = new Texture2D(1, 1);
-            borderTex.SetPixel(0, 0, new Color(0.82f, 0.67f, 0.15f, alpha * 0.6f));
-            borderTex.Apply();
-            GUI.DrawTexture(new Rect(x, y, panelW, 2f), borderTex); // top
-            GUI.DrawTexture(new Rect(x, y + panelH - 2f, panelW, 2f), borderTex); // bottom
-            GUI.DrawTexture(new Rect(x, y, 2f, panelH), borderTex); // left
-            GUI.DrawTexture(new Rect(x + panelW - 2f, y, 2f, panelH), borderTex); // right
+            if (_borderTex == null)
+            {
+                _borderTex = new Texture2D(1, 1);
+                _borderTex.SetPixel(0, 0, new Color(0.82f, 0.67f, 0.15f, 1f));
+                _borderTex.Apply();
+            }
+            GUI.color = new Color(1f, 1f, 1f, alpha * 0.6f);
+            GUI.DrawTexture(new Rect(x, y, panelW, 2f), _borderTex); // top
+            GUI.DrawTexture(new Rect(x, y + panelH - 2f, panelW, 2f), _borderTex); // bottom
+            GUI.DrawTexture(new Rect(x, y, 2f, panelH), _borderTex); // left
+            GUI.DrawTexture(new Rect(x + panelW - 2f, y, 2f, panelH), _borderTex); // right
+            GUI.color = bgColor;
 
             float cy = y + padding;
 
