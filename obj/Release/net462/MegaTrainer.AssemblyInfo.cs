@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MegaTrainer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.5.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.5.0+6bb514ae8fc8913bffc2639c19fc6ed6c161532d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.5.0+4108c3c12a0870f4a676dbc6d700fe9fbee4692d")]
 [assembly: System.Reflection.AssemblyProductAttribute("MegaTrainer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MegaTrainer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.5.0.0")]

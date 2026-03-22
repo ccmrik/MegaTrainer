@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.0";
+        public const string PluginVersion = "1.5.1";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -229,19 +229,9 @@ namespace MegaTrainer
             else
                 player.SetGhostMode(false);
 
-            // Fly mode — set both m_debugMode (needed for fly) and m_debugFly (the actual fly flag)
-            if (IsCheatEnabled("fly_mode"))
-            {
-                if (!Player.m_debugMode)
-                    Player.m_debugMode = true;
-                SetDebugFly(player, true);
-            }
-            else
-            {
-                SetDebugFly(player, false);
-                if (Player.m_debugMode)
-                    Player.m_debugMode = false;
-            }
+            // Fly mode — set m_debugFly directly (do NOT touch m_debugMode — it
+            // enables debug hotkeys, unlocks all recipes, and breaks server commands)
+            SetDebugFly(player, IsCheatEnabled("fly_mode"));
 
             // Always Rested — force-apply SE_Rested and keep its timer alive
             if (IsCheatEnabled("always_rested"))
