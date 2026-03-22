@@ -400,4 +400,28 @@ namespace MegaTrainer
             factor = Mathf.Max(factor * 20f, 1.0f);
         }
     }
+
+    // ═══════════════════════════════════════════════════════
+    // PREVENT DEBUG MODE RECIPE UNLOCK
+    // Valheim's UpdateKnownRecipesList adds ALL recipes when
+    // m_debugMode is true. We temporarily unset the flag
+    // while that method runs so fly mode works without the
+    // "learn every recipe in the game" side effect.
+    // ═══════════════════════════════════════════════════════
+    [HarmonyPatch(typeof(Player), "UpdateKnownRecipesList")]
+    public static class PreventDebugRecipeUnlockPatch
+    {
+        static void Prefix(ref bool __state)
+        {
+            __state = Player.m_debugMode;
+            if (__state && MegaTrainerPlugin.IsCheatEnabled("debug_mode"))
+                Player.m_debugMode = false;
+        }
+
+        static void Postfix(bool __state)
+        {
+            if (__state && MegaTrainerPlugin.IsCheatEnabled("debug_mode"))
+                Player.m_debugMode = __state;
+        }
+    }
 }
