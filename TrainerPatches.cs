@@ -394,10 +394,10 @@ namespace MegaTrainer
             var player = Traverse.Create(__instance).Field("m_player").GetValue<Player>();
             if (player != Player.m_localPlayer) return;
 
-            // Override the factor so each skill use raises by ~1 full point
-            // Default raises are tiny (0.1-0.5), so we multiply to get ~1.0 per action
-            // Setting factor to a large value lets the vanilla XP curve handle the rest
-            factor = Mathf.Max(factor * 20f, 1.0f);
+            // Override factor to a flat high value that guarantees 1+ skill point per action
+            // at any level. Valheim's per-level XP threshold scales with level, so a simple
+            // multiplier falls short at mid/high levels. 500 trivially exceeds max requirements.
+            factor = 500f;
         }
     }
 
