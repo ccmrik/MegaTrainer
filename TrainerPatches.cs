@@ -75,70 +75,7 @@ namespace MegaTrainer
         }
     }
 
-    /// <summary>
-    /// Finds and sets the m_noPlacementCost field on whatever class owns it (ZNet in current Valheim).
-    /// This is the same flag the vanilla "nocost" console command toggles.
-    /// Falls back to patching Player.HaveRequirements if the field can't be found.
-    /// </summary>
-    public static class FreeBuildHelper
-    {
-        private static FieldInfo _npcField;
-        private static object _npcTarget;
-        private static bool _searched;
 
-        public static void SetNoPlacementCost(bool enabled)
-        {
-            if (!_searched)
-            {
-                _searched = true;
-                // Search common classes for m_noPlacementCost
-                foreach (var typeName in new[] { "Player", "ZNet", "Game", "Piece" })
-                {
-                    var type = AccessTools.TypeByName(typeName);
-                    if (type == null) continue;
-                    var field = AccessTools.Field(type, "m_noPlacementCost");
-                    if (field != null)
-                    {
-                        _npcField = field;
-                        MegaTrainerPlugin.Log.LogInfo($"Found m_noPlacementCost on {typeName} (static={field.IsStatic})");
-                        break;
-                    }
-                }
-                if (_npcField == null)
-                    MegaTrainerPlugin.Log.LogWarning("Could not find m_noPlacementCost field — Free Build relies on HaveRequirements patch only");
-            }
-
-            if (_npcField == null) return;
-
-            try
-            {
-                if (_npcField.IsStatic)
-                {
-                    _npcField.SetValue(null, enabled);
-                }
-                else
-                {
-                    // For instance fields, we need the instance
-                    // Player instance
-                    if (_npcField.DeclaringType == typeof(Player))
-                    {
-                        var player = Player.m_localPlayer;
-                        if (player != null) _npcField.SetValue(player, enabled);
-                    }
-                    // ZNet instance
-                    else if (_npcField.DeclaringType.Name == "ZNet")
-                    {
-                        var znet = ZNet.instance;
-                        if (znet != null) _npcField.SetValue(znet, enabled);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MegaTrainerPlugin.Log.LogError($"Failed to set m_noPlacementCost: {ex.Message}");
-            }
-        }
-    }
 
     // ═══════════════════════════════════════════════════════
     // NO WEATHER DAMAGE — Block freezing/cold/wet effects

@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.3";
+        public const string PluginVersion = "1.5.4";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -237,9 +237,8 @@ namespace MegaTrainer
             if (IsCheatEnabled("always_rested"))
                 ForceRested(player);
 
-            // Free Build — use Valheim's built-in nocost flag (bypasses station, material, and biome checks)
-            // The field lives on a non-Player class, so we use reflection cached in TrainerPatches
-            FreeBuildHelper.SetNoPlacementCost(IsCheatEnabled("no_placement_cost"));
+            // Free Build — handled entirely by Harmony patches (HaveRequirements + ConsumeResources)
+            // We do NOT set m_noPlacementCost because that permanently discovers all recipes/pieces
 
             // Auto-tame — continuously tame nearby creatures every 2 seconds while enabled
             if (IsCheatEnabled("tame_all") && Time.time >= _nextTameCheck)
