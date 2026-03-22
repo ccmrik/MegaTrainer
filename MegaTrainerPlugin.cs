@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.2";
+        public const string PluginVersion = "1.5.3";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -34,6 +34,8 @@ namespace MegaTrainer
 
         // HUD overlay state
         private static float _hudShowTime = -10f;
+        // Auto-tame timer (runs every 2 seconds while tame_all is enabled)
+        private static float _nextTameCheck = 0f;
         private const float HudVisibleDuration = 5f;
         private const float HudFadeDuration = 0.5f;
         private static GUIStyle _hudLabelStyle;
@@ -146,8 +148,6 @@ namespace MegaTrainer
                 // Handle one-shot cheats
                 if (IsCheatEnabled("explore_map"))
                     RevealMap();
-                if (IsCheatEnabled("tame_all"))
-                    TameNearby();
             }
             catch (Exception ex)
             {
@@ -241,6 +241,13 @@ namespace MegaTrainer
             // The field lives on a non-Player class, so we use reflection cached in TrainerPatches
             FreeBuildHelper.SetNoPlacementCost(IsCheatEnabled("no_placement_cost"));
 
+            // Auto-tame — continuously tame nearby creatures every 2 seconds while enabled
+            if (IsCheatEnabled("tame_all") && Time.time >= _nextTameCheck)
+            {
+                _nextTameCheck = Time.time + 2f;
+                TameNearby();
+            }
+
             // Don't process hotkeys when UI is open
             if (IsUIBlockingInput()) return;
 
@@ -260,7 +267,6 @@ namespace MegaTrainer
 
                     // Trigger one-shot cheats immediately
                     if (newState && binding.CheatId == "explore_map") RevealMap();
-                    if (newState && binding.CheatId == "tame_all") TameNearby();
                 }
             }
 
