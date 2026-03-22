@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.1";
+        public const string PluginVersion = "1.5.2";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -430,18 +430,27 @@ namespace MegaTrainer
         private static void TameNearby()
         {
             if (Player.m_localPlayer == null) return;
+            var pos = Player.m_localPlayer.transform.position;
+            var tameMethod = typeof(Tameable).GetMethod("Tame",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (tameMethod == null)
+            {
+                Log.LogWarning("Tameable.Tame() method not found — game API may have changed");
+                return;
+            }
             var characters = Character.GetAllCharacters();
             int tamed = 0;
             foreach (var c in characters)
             {
                 if (c == null || c.IsPlayer()) continue;
                 if (c.IsTamed()) continue;
+                if (Vector3.Distance(pos, c.transform.position) > 100f) continue;
                 var tameable = c.GetComponent<Tameable>();
                 if (tameable != null)
                 {
-                    // Use Harmony Traverse to call the private Tame method
-                    Traverse.Create(tameable).Method("Tame").GetValue();
+                    tameMethod.Invoke(tameable, null);
                     tamed++;
+                    Log.LogInfo($"  Tamed: {c.m_name} ({Utils.GetPrefabName(c.gameObject)})");
                 }
             }
             if (tamed > 0)
