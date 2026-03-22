@@ -50,23 +50,6 @@ namespace MegaTrainer
     }
 
     // ═══════════════════════════════════════════════════════
-    // NO SKILL DRAIN — Prevent skill loss on death
-    // ═══════════════════════════════════════════════════════
-    [HarmonyPatch(typeof(Skills), nameof(Skills.LowerAllSkills))]
-    public static class NoSkillDrainPatch
-    {
-        static bool Prefix(Skills __instance)
-        {
-            if (!MegaTrainerPlugin.IsCheatEnabled("no_skill_drain")) return true;
-            // Skills belongs to its Player — check via Harmony reflection
-            var player = Traverse.Create(__instance).Field("m_player").GetValue<Player>();
-            if (player == Player.m_localPlayer)
-                return false;
-            return true;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════
     // FREE BUILD — No resource cost for building/crafting
     // ═══════════════════════════════════════════════════════
     [HarmonyPatch(typeof(Player), nameof(Player.HaveRequirements), new[] { typeof(Piece), typeof(Player.RequirementMode) })]
@@ -414,13 +397,13 @@ namespace MegaTrainer
         static void Prefix(ref bool __state)
         {
             __state = Player.m_debugMode;
-            if (__state && MegaTrainerPlugin.IsCheatEnabled("debug_mode"))
+            if (__state && MegaTrainerPlugin.IsCheatEnabled("fly_mode"))
                 Player.m_debugMode = false;
         }
 
         static void Postfix(bool __state)
         {
-            if (__state && MegaTrainerPlugin.IsCheatEnabled("debug_mode"))
+            if (__state && MegaTrainerPlugin.IsCheatEnabled("fly_mode"))
                 Player.m_debugMode = __state;
         }
     }

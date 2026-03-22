@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.4.5";
+        public const string PluginVersion = "1.5.0";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -66,12 +66,11 @@ namespace MegaTrainer
             new NumpadBinding(KeyCode.Keypad1, false, "unlimited_stamina", "Unlimited Stamina"),
             new NumpadBinding(KeyCode.Keypad2, false, "unlimited_weight", "Unlimited Carry Weight"),
             new NumpadBinding(KeyCode.Keypad3, false, "ghost_mode", "Ghost Mode"),
-            new NumpadBinding(KeyCode.Keypad4, false, "no_skill_drain", "No Skill Drain"),
-            new NumpadBinding(KeyCode.Keypad5, false, "debug_mode", "Debug/Fly Mode"),
-            new NumpadBinding(KeyCode.Keypad6, false, "no_placement_cost", "Free Build"),
-            new NumpadBinding(KeyCode.Keypad7, false, "no_weather_damage", "No Weather Damage"),
-            new NumpadBinding(KeyCode.Keypad8, false, "instant_kill", "One-Hit Kill"),
-            new NumpadBinding(KeyCode.Keypad9, false, "no_durability_loss", "No Durability Loss"),
+            new NumpadBinding(KeyCode.Keypad4, false, "fly_mode", "Fly Mode"),
+            new NumpadBinding(KeyCode.Keypad5, false, "no_placement_cost", "Free Build"),
+            new NumpadBinding(KeyCode.Keypad6, false, "no_weather_damage", "No Weather Damage"),
+            new NumpadBinding(KeyCode.Keypad7, false, "instant_kill", "One-Hit Kill"),
+            new NumpadBinding(KeyCode.Keypad8, false, "no_durability_loss", "No Durability Loss"),
             // ALT + numpad bindings
             new NumpadBinding(KeyCode.Keypad0, true, "explore_map", "Reveal Map"),
             new NumpadBinding(KeyCode.Keypad1, true, "always_rested", "Always Rested"),
@@ -230,8 +229,8 @@ namespace MegaTrainer
             else
                 player.SetGhostMode(false);
 
-            // Debug/Fly mode — set both m_debugMode (needed for fly) and m_debugFly (the actual fly flag)
-            if (IsCheatEnabled("debug_mode"))
+            // Fly mode — set both m_debugMode (needed for fly) and m_debugFly (the actual fly flag)
+            if (IsCheatEnabled("fly_mode"))
             {
                 if (!Player.m_debugMode)
                     Player.m_debugMode = true;
@@ -243,6 +242,10 @@ namespace MegaTrainer
                 if (Player.m_debugMode)
                     Player.m_debugMode = false;
             }
+
+            // Always Rested — force-apply SE_Rested and keep its timer alive
+            if (IsCheatEnabled("always_rested"))
+                ForceRested(player);
 
             // Free Build — use Valheim's built-in nocost flag (bypasses station, material, and biome checks)
             // The field lives on a non-Player class, so we use reflection cached in TrainerPatches
@@ -395,6 +398,36 @@ namespace MegaTrainer
             }
             if (_debugFlyField != null)
                 _debugFlyField.SetValue(player, enabled);
+        }
+
+        private static FieldInfo _seTimeField;
+        private static bool _seTimeFieldSearched;
+
+        private static void ForceRested(Player player)
+        {
+            var seman = player.GetSEMan();
+            if (seman == null) return;
+
+            var rested = seman.GetStatusEffect("Rested".GetHashCode());
+            if (rested == null)
+            {
+                // Apply SE_Rested for the first time
+                seman.AddStatusEffect("Rested".GetHashCode());
+                rested = seman.GetStatusEffect("Rested".GetHashCode());
+            }
+
+            if (rested != null)
+            {
+                // Keep the timer alive by resetting elapsed time via reflection (m_time is private)
+                if (!_seTimeFieldSearched)
+                {
+                    _seTimeFieldSearched = true;
+                    _seTimeField = AccessTools.Field(typeof(StatusEffect), "m_time");
+                    if (_seTimeField == null)
+                        Log.LogWarning("Could not find StatusEffect.m_time — Always Rested timer reset won't work");
+                }
+                _seTimeField?.SetValue(rested, 0f);
+            }
         }
 
         private static void RevealMap()
