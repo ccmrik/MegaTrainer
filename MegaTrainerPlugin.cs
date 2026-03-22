@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.4.4";
+        public const string PluginVersion = "1.4.5";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -27,6 +27,10 @@ namespace MegaTrainer
         // Speed & Jump multipliers — adjusted via Num+/Num- keys
         internal static float SpeedMultiplier = 1.0f;
         internal static float JumpMultiplier = 1.0f;
+
+        // Cached FieldInfo for Player.m_debugFly (private field — the "fly" command toggles this)
+        private static FieldInfo _debugFlyField;
+        private static bool _debugFlyFieldSearched;
 
         // HUD overlay state
         private static float _hudShowTime = -10f;
@@ -226,11 +230,19 @@ namespace MegaTrainer
             else
                 player.SetGhostMode(false);
 
-            // Debug/Fly mode
-            if (IsCheatEnabled("debug_mode") && !Player.m_debugMode)
-                Player.m_debugMode = true;
-            else if (!IsCheatEnabled("debug_mode") && Player.m_debugMode)
-                Player.m_debugMode = false;
+            // Debug/Fly mode — set both m_debugMode (needed for fly) and m_debugFly (the actual fly flag)
+            if (IsCheatEnabled("debug_mode"))
+            {
+                if (!Player.m_debugMode)
+                    Player.m_debugMode = true;
+                SetDebugFly(player, true);
+            }
+            else
+            {
+                SetDebugFly(player, false);
+                if (Player.m_debugMode)
+                    Player.m_debugMode = false;
+            }
 
             // Free Build — use Valheim's built-in nocost flag (bypasses station, material, and biome checks)
             // The field lives on a non-Player class, so we use reflection cached in TrainerPatches
@@ -370,6 +382,19 @@ namespace MegaTrainer
                 }
             }
             return "[]";
+        }
+
+        private static void SetDebugFly(Player player, bool enabled)
+        {
+            if (!_debugFlyFieldSearched)
+            {
+                _debugFlyFieldSearched = true;
+                _debugFlyField = AccessTools.Field(typeof(Player), "m_debugFly");
+                if (_debugFlyField == null)
+                    Log.LogWarning("Could not find Player.m_debugFly field — fly toggle won't work");
+            }
+            if (_debugFlyField != null)
+                _debugFlyField.SetValue(player, enabled);
         }
 
         private static void RevealMap()
