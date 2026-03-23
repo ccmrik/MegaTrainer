@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.5";
+        public const string PluginVersion = "1.5.6";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -31,6 +31,10 @@ namespace MegaTrainer
         // Cached FieldInfo for Player.m_debugFly (private field — the "fly" command toggles this)
         private static FieldInfo _debugFlyField;
         private static bool _debugFlyFieldSearched;
+
+        // Cached FieldInfo for Player.m_noPlacementCost (private field — free build toggle)
+        private static FieldInfo _noPlacementCostField;
+        private static bool _noPlacementCostFieldSearched;
 
         // HUD overlay state
         private static float _hudShowTime = -10f;
@@ -237,8 +241,10 @@ namespace MegaTrainer
             if (IsCheatEnabled("always_rested"))
                 ForceRested(player);
 
-            // Free Build — handled entirely by Harmony patches (HaveRequirements + ConsumeResources)
-            // We do NOT set m_noPlacementCost because that permanently discovers all recipes/pieces
+            // Free Build — set m_noPlacementCost directly (uses Valheim's built-in free build).
+            // A Harmony patch on UpdateKnownRecipesList temporarily hides m_noPlacementCost
+            // so the game doesn't permanently mass-discover all recipes/pieces.
+            SetNoPlacementCost(player, IsCheatEnabled("no_placement_cost"));
 
             // Auto-tame — continuously tame nearby creatures every 2 seconds while enabled
             if (IsCheatEnabled("tame_all") && Time.time >= _nextTameCheck)
@@ -393,6 +399,25 @@ namespace MegaTrainer
             }
             if (_debugFlyField != null)
                 _debugFlyField.SetValue(player, enabled);
+        }
+
+        internal static void SetNoPlacementCost(Player player, bool enabled)
+        {
+            if (!_noPlacementCostFieldSearched)
+            {
+                _noPlacementCostFieldSearched = true;
+                _noPlacementCostField = AccessTools.Field(typeof(Player), "m_noPlacementCost");
+                if (_noPlacementCostField == null)
+                    Log.LogWarning("Could not find Player.m_noPlacementCost field — free build toggle won't work");
+            }
+            if (_noPlacementCostField != null)
+                _noPlacementCostField.SetValue(player, enabled);
+        }
+
+        internal static bool GetNoPlacementCost(Player player)
+        {
+            if (_noPlacementCostField == null) return false;
+            return (bool)_noPlacementCostField.GetValue(player);
         }
 
         private static FieldInfo _seTimeField;

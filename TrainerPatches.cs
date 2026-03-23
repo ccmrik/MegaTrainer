@@ -75,6 +75,32 @@ namespace MegaTrainer
         }
     }
 
+    // ═══════════════════════════════════════════════════════
+    // FREE BUILD — Prevent permanent recipe/piece discovery
+    // m_noPlacementCost triggers mass-discovery in UpdateKnownRecipesList.
+    // We temporarily hide it so the game only discovers naturally.
+    // ═══════════════════════════════════════════════════════
+    [HarmonyPatch(typeof(Player), "UpdateKnownRecipesList")]
+    public static class FreeBuildPreventDiscoveryPatch
+    {
+        static void Prefix(Player __instance, ref bool __state)
+        {
+            __state = false;
+            if (!MegaTrainerPlugin.IsCheatEnabled("no_placement_cost")) return;
+            if (__instance != Player.m_localPlayer) return;
+            if (MegaTrainerPlugin.GetNoPlacementCost(__instance))
+            {
+                MegaTrainerPlugin.SetNoPlacementCost(__instance, false);
+                __state = true;
+            }
+        }
+
+        static void Postfix(Player __instance, bool __state)
+        {
+            if (__state)
+                MegaTrainerPlugin.SetNoPlacementCost(__instance, true);
+        }
+    }
 
 
     // ═══════════════════════════════════════════════════════
