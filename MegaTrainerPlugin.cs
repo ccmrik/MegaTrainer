@@ -14,7 +14,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.6";
+        public const string PluginVersion = "1.5.7";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -42,6 +42,16 @@ namespace MegaTrainer
         private static float _nextTameCheck = 0f;
         private const float HudVisibleDuration = 5f;
         private const float HudFadeDuration = 0.5f;
+
+        // Per-frame state tracking — only call setters when state changes
+        private static bool _lastGhostState;
+        private static bool _lastFlyState;
+        private static bool _lastNoCostState;
+        private static bool _lastRestedState;
+        // Cached rested status effect ref to avoid lookup every frame
+        private static StatusEffect _cachedRestedSE;
+        private static int _cachedRestedPlayer;  // instance ID to invalidate on player change
+        private static float _nextRestedReset;  // throttle reflection write to once per second
         private static GUIStyle _hudLabelStyle;
         private static GUIStyle _hudHeaderStyle;
         private static GUIStyle _hudKeyStyle;
@@ -227,24 +237,40 @@ namespace MegaTrainer
             Player player = Player.m_localPlayer;
             if (player == null) return;
 
-            // Ghost mode — toggle enemy awareness
-            if (IsCheatEnabled("ghost_mode"))
-                player.SetGhostMode(true);
-            else
-                player.SetGhostMode(false);
+            // Ghost mode — toggle enemy awareness (only when state changes)
+            bool wantGhost = IsCheatEnabled("ghost_mode");
+            if (wantGhost != _lastGhostState)
+            {
+                player.SetGhostMode(wantGhost);
+                _lastGhostState = wantGhost;
+            }
 
             // Fly mode — set m_debugFly directly (do NOT touch m_debugMode — it
             // enables debug hotkeys, unlocks all recipes, and breaks server commands)
-            SetDebugFly(player, IsCheatEnabled("fly_mode"));
+            bool wantFly = IsCheatEnabled("fly_mode");
+            if (wantFly != _lastFlyState)
+            {
+                SetDebugFly(player, wantFly);
+                _lastFlyState = wantFly;
+            }
 
             // Always Rested — force-apply SE_Rested and keep its timer alive
-            if (IsCheatEnabled("always_rested"))
+            bool wantRested = IsCheatEnabled("always_rested");
+            if (wantRested)
                 ForceRested(player);
+            else if (_lastRestedState && !wantRested)
+                _cachedRestedSE = null;  // clear cache when toggled off
+            _lastRestedState = wantRested;
 
             // Free Build — set m_noPlacementCost directly (uses Valheim's built-in free build).
             // A Harmony patch on UpdateKnownRecipesList temporarily hides m_noPlacementCost
             // so the game doesn't permanently mass-discover all recipes/pieces.
-            SetNoPlacementCost(player, IsCheatEnabled("no_placement_cost"));
+            bool wantNoCost = IsCheatEnabled("no_placement_cost");
+            if (wantNoCost != _lastNoCostState)
+            {
+                SetNoPlacementCost(player, wantNoCost);
+                _lastNoCostState = wantNoCost;
+            }
 
             // Auto-tame — continuously tame nearby creatures every 2 seconds while enabled
             if (IsCheatEnabled("tame_all") && Time.time >= _nextTameCheck)
@@ -428,17 +454,32 @@ namespace MegaTrainer
             var seman = player.GetSEMan();
             if (seman == null) return;
 
-            var rested = seman.GetStatusEffect("Rested".GetHashCode());
-            if (rested == null)
+            // Invalidate cache if player instance changed
+            int playerId = player.GetInstanceID();
+            if (playerId != _cachedRestedPlayer)
             {
-                // Apply SE_Rested for the first time
-                seman.AddStatusEffect("Rested".GetHashCode());
-                rested = seman.GetStatusEffect("Rested".GetHashCode());
+                _cachedRestedSE = null;
+                _cachedRestedPlayer = playerId;
             }
 
-            if (rested != null)
+            // Use cached reference; re-lookup only if lost
+            if (_cachedRestedSE == null)
+            {
+                _cachedRestedSE = seman.GetStatusEffect("Rested".GetHashCode());
+                if (_cachedRestedSE == null)
+                {
+                    seman.AddStatusEffect("Rested".GetHashCode());
+                    _cachedRestedSE = seman.GetStatusEffect("Rested".GetHashCode());
+                }
+            }
+
+            if (_cachedRestedSE != null)
             {
                 // Keep the timer alive by resetting elapsed time via reflection (m_time is private)
+                // Throttle to once per second — no need to reset every frame
+                if (Time.time < _nextRestedReset) return;
+                _nextRestedReset = Time.time + 1f;
+
                 if (!_seTimeFieldSearched)
                 {
                     _seTimeFieldSearched = true;
@@ -446,7 +487,7 @@ namespace MegaTrainer
                     if (_seTimeField == null)
                         Log.LogWarning("Could not find StatusEffect.m_time — Always Rested timer reset won't work");
                 }
-                _seTimeField?.SetValue(rested, 0f);
+                _seTimeField?.SetValue(_cachedRestedSE, 0f);
             }
         }
 
