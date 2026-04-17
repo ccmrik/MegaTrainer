@@ -15,7 +15,7 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "Mega Trainer";
-        public const string PluginVersion = "1.6.1";
+        public const string PluginVersion = "1.6.2";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -111,7 +111,6 @@ namespace MegaTrainer
         private void Awake()
         {
             Log = Logger;
-            Log.LogInfo($"{PluginName} v{PluginVersion} loading...");
 
             DebugMode = Config.Bind(
                 "99. Debug",
