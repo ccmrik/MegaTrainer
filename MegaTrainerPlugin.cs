@@ -1,4 +1,5 @@
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using System;
@@ -14,11 +15,22 @@ namespace MegaTrainer
     {
         public const string PluginGUID = "com.rik.megatrainer";
         public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.5.7";
+        public const string PluginVersion = "1.6.0";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
         private static FileSystemWatcher _stateWatcher;
+
+        // Workspace-standard debug toggle. Silent by default; flip on when
+        // diagnosing an issue. Existing Log.LogInfo calls are milestone/status
+        // messages kept always-on; DebugLog() is the channel for new chatter.
+        public static ConfigEntry<bool> DebugMode;
+
+        /// <summary>Gated diagnostic log. Silent unless DebugMode = true.</summary>
+        public static void DebugLog(string msg)
+        {
+            if (DebugMode?.Value == true) Log?.LogInfo(msg);
+        }
 
         // Current cheat states — read by Harmony patches
         internal static Dictionary<string, bool> CheatStates = new Dictionary<string, bool>();
@@ -100,6 +112,13 @@ namespace MegaTrainer
         {
             Log = Logger;
             Log.LogInfo($"{PluginName} v{PluginVersion} loading...");
+
+            DebugMode = Config.Bind(
+                "99. Debug",
+                "DebugMode",
+                false,
+                "Enable verbose debug logging for MegaTrainer (patch traces, state reload chatter)"
+            );
 
             // Find trainer_state.json — MegaLoad writes it next to the BepInEx folder
             // BepInEx plugins path: .../BepInEx/plugins/MegaTrainer/
