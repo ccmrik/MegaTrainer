@@ -14,8 +14,8 @@ namespace MegaTrainer
     public class MegaTrainerPlugin : BaseUnityPlugin
     {
         public const string PluginGUID = "com.rik.megatrainer";
-        public const string PluginName = "MegaTrainer";
-        public const string PluginVersion = "1.6.0";
+        public const string PluginName = "Mega Trainer";
+        public const string PluginVersion = "1.6.1";
 
         internal static ManualLogSource Log;
         private static Harmony _harmony;
@@ -128,7 +128,7 @@ namespace MegaTrainer
             string profileDir = Path.GetDirectoryName(bepinexDir);
             _trainerStatePath = Path.Combine(profileDir, "trainer_state.json");
 
-            Log.LogInfo($"Trainer state path: {_trainerStatePath}");
+            DebugLog($"Trainer state path: {_trainerStatePath}");
 
             LoadState();
             SetupWatcher();
@@ -146,7 +146,7 @@ namespace MegaTrainer
             {
                 if (!File.Exists(_trainerStatePath))
                 {
-                    Log.LogInfo("No trainer_state.json found — all cheats OFF.");
+                    DebugLog("No trainer_state.json found — all cheats OFF.");
                     CheatStates.Clear();
                     return;
                 }
@@ -163,7 +163,7 @@ namespace MegaTrainer
                 {
                     bool wasEnabled = CheatStates.ContainsKey(kv.Key) && CheatStates[kv.Key];
                     if (kv.Value != wasEnabled)
-                        Log.LogInfo($"Cheat '{kv.Key}' → {(kv.Value ? "ON" : "OFF")}");
+                        DebugLog($"Cheat '{kv.Key}' → {(kv.Value ? "ON" : "OFF")}");
                 }
 
                 CheatStates = newStates;
@@ -172,9 +172,9 @@ namespace MegaTrainer
                 float newSpeed = JsonParser.ExtractFloatValue(json, "speed_multiplier", 1.0f);
                 float newJump = JsonParser.ExtractFloatValue(json, "jump_multiplier", 1.0f);
                 if (!Mathf.Approximately(newSpeed, SpeedMultiplier))
-                    Log.LogInfo($"Speed multiplier → {newSpeed:F1}x");
+                    DebugLog($"Speed multiplier → {newSpeed:F1}x");
                 if (!Mathf.Approximately(newJump, JumpMultiplier))
-                    Log.LogInfo($"Jump multiplier → {newJump:F1}x");
+                    DebugLog($"Jump multiplier → {newJump:F1}x");
                 SpeedMultiplier = newSpeed;
                 JumpMultiplier = newJump;
 
@@ -208,7 +208,7 @@ namespace MegaTrainer
                 _stateWatcher.SynchronizingObject = null;
                 _stateWatcher.EnableRaisingEvents = true;
 
-                Log.LogInfo($"Watching: {_trainerStatePath}");
+                DebugLog($"Watching: {_trainerStatePath}");
             }
             catch (Exception ex)
             {
@@ -311,7 +311,7 @@ namespace MegaTrainer
                     CheatStates[binding.CheatId] = newState;
                     string status = newState ? "ON" : "OFF";
                     player.Message(MessageHud.MessageType.Center, $"{binding.Label}: {status}");
-                    Log.LogInfo($"Hotkey: {binding.Label} → {status}");
+                    DebugLog($"Hotkey: {binding.Label} → {status}");
                     PersistState();
                     ShowHud();
 
@@ -514,7 +514,7 @@ namespace MegaTrainer
         {
             if (Minimap.instance == null) return;
             Minimap.instance.ExploreAll();
-            Log.LogInfo("Map fully revealed!");
+            DebugLog("Map fully revealed!");
         }
 
         private static void TameNearby()
@@ -540,11 +540,11 @@ namespace MegaTrainer
                 {
                     tameMethod.Invoke(tameable, null);
                     tamed++;
-                    Log.LogInfo($"  Tamed: {c.m_name} ({Utils.GetPrefabName(c.gameObject)})");
+                    DebugLog($"  Tamed: {c.m_name} ({Utils.GetPrefabName(c.gameObject)})");
                 }
             }
             if (tamed > 0)
-                Log.LogInfo($"Tamed {tamed} creatures!");
+                DebugLog($"Tamed {tamed} creatures!");
         }
 
         private void PatchAllIndividually()
@@ -565,7 +565,7 @@ namespace MegaTrainer
                     Log.LogWarning($"Patch {type.Name} failed: {ex.Message}");
                 }
             }
-            Log.LogInfo($"Harmony patches: {ok} applied, {fail} failed");
+            DebugLog($"Harmony patches: {ok} applied, {fail} failed");
         }
 
         private static void ShowHud()
